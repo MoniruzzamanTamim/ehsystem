@@ -1,0 +1,83 @@
+/* গ্লোবাল হেডার স্টাইল */
+
+
+:root {
+    --primary-color: #0c59cf; /* Health Blue */
+    --secondary-color: #00b4d8; /* Medical Cyan */
+    --dark-bg: #1e293b;
+    --light-bg: #ffffff;
+    }
+body { font-family: 'Inter', sans-serif; background-color: var(--light-bg); }
+        
+        
+        
+    /* Navbar Design */
+.main-header{
+    background-color: var(--light-bg);
+    padding: 15px 40px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    }
+.navbar-doctor {
+     background: white;
+     box-shadow: 0 2px 15px rgba(0,0,0,0.1);
+      padding: 12px 0;
+ }
+.nav-logo { font-family: 'Poppins', sans-serif; font-weight: 700; color: var(--primary-color); font-size: 24px; text-decoration: none; }
+.nav-logo span { color: var(--secondary-color); }
+.main-header-right p {
+    font-size: 14px;
+    font-weight: bold;
+    background: white;
+    margin: 0;
+    color: #0F6EFD;
+}
+
+
+.second-menu{
+    background-color: black;
+    padding: 12px 50px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+.second-menu .logo-section i{
+    color: #ffffff;
+}
+.second-menu .logo-section a i span{
+    color: #ffffff !important;
+}
+
+
+.brand-area p {
+    margin: 5px 0 0 0;
+    font-size: 14px;
+    opacity: 0.9;
+}
+
+
+
+.nav-links a {
+    color: #ecf0f1;
+    text-decoration: none;
+    margin-right: 20px;
+    font-size: 14px;
+    font-weight: 600;
+    transition: color 0.2s ease;
+}
+
+.nav-links a:hover {
+    color: #99CC00;
+}
+
+.user-badge {
+    background: rgba(255, 255, 255, 0.1);
+    color: #fff;
+    padding: 6px 14px;
+    border-radius: 20px;
+    font-size: 13px;
+    font-weight: bold;
+    border: 1px solid rgba(255,255,255,0.2);
+}

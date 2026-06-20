@@ -1,0 +1,16 @@
+body{
+    font-family: Arial;
+    margin:0;
+}
+
+.header{
+    background:#99CC00;
+    padding:20px;
+    text-align:center;
+}
+
+.footer{
+    background:#cccccc;
+    padding:20px;
+    text-align:center;
+}
