@@ -21,7 +21,6 @@ if (isset($_GET['id']) && is_numeric($_GET['id'])) {
             $view_patient = true;
             $patient_nid = $row['NID'];
             $patient_name = $row['Full_Name'];
-            // ensure phone is available to avoid undefined variable notice
             $phone = isset($row['Phone']) ? $row['Phone'] : '';
             $address = isset($row['Address']) ? $row['Address'] : '';
             $blood_group = isset($row['Blood_Group']) ? $row['Blood_Group'] : '';
@@ -35,28 +34,23 @@ if (isset($_POST['submit_workflow'])) {
     $patient_nid = mysqli_real_escape_string($conn, $_POST['patient_nid']);
     $test_recommendations = mysqli_real_escape_string($conn, $_POST['test_recommendations']);
     
-    // ১. ডাটাবেজ থেকে রোগীর লেটেস্ট তথ্য ফেচ করা
     $info_query = mysqli_query($conn, "SELECT Phone, Address FROM patient WHERE NID = '$patient_nid'");
     $info = mysqli_fetch_assoc($info_query);
     
-    // যদি ডাটা না পাওয়া যায়, তবে 'N/A' সেট করা
     $contact = $info['Phone'] ?? 'N/A';
     $address = $info['Address'] ?? 'N/A';
     
-    // ২. টিকিট জেনারেট করা
     if (!empty(trim($test_recommendations))) {
         $ticket_no = "LAB-" . date('Y') . "-" . rand(1000, 9999);
         
-        // 🔥 ফিক্সড: এখানে ঠিক ৭টি '?' প্লেসহোল্ডার দেওয়া হয়েছে, ফলে টাইপ সংখ্যা (sssssssi) এখন হুবহু মিলবে
         $stmt2 = mysqli_prepare($conn, "INSERT INTO pathology_tickets 
             (ticket_no, patient_nid, doctor_nid, recommended_tests, status, patient_contact, patient_address, Appointment_Id) 
             VALUES (?, ?, ?, ?, 'Pending', ?, ?, ?)");
         
-        // ssssss'i' মানে ৬টি স্ট্রিং এবং ১টি ইন্টিজার ভেরিয়েবল (মোট ৭টি ডেটা প্যারামিটার)
         mysqli_stmt_bind_param($stmt2, 'ssssssi', $ticket_no, $patient_nid, $doctor_nid, $test_recommendations, $contact, $address, $id);
         
         if(mysqli_stmt_execute($stmt2)) {
-            // ডাটাবেজে সফলভাবে ইনসার্ট হয়েছে
+            // Success
         } else {
             echo "Error: " . mysqli_error($conn);
         }
@@ -69,10 +63,13 @@ if (isset($_POST['submit_workflow'])) {
     exit();
 }
 
-// টেবিল ১: সব Accepted রোগীর সিরিয়াল তালিকা (যারা ডক্টরের রুমের সামনে অপেক্ষমান)
+// ডাটাবেজ থেকে টেস্টের তালিকা নিয়ে আসা (ড্রপডাউনের জন্য)
+$lab_tests_query = mysqli_query($conn, "SELECT id, test_name FROM lab_tests ORDER BY test_name ASC");
+
+// টেবিল ১: সব Accepted রোগীর সিরিয়াল তালিকা
 $accepted_list = mysqli_query($conn, "SELECT a.*, p.Full_Name, p.Phone, p.Address FROM appointments a JOIN patient p ON a.Patient_NID = p.NID WHERE a.Doctor_NID = '$doctor_nid' AND a.Status = 'Accepted' ORDER BY a.Serial_No ASC");
 
-// টেবিল ২: শুধুমাত্র যেসকল রোগীর ল্যাব টেস্ট পাঠানো হয়েছে, তাদের লাইভ ট্র্যাক কুয়েরি
+// টেবিল ২: লাইভ ট্র্যাক কুয়েরি
 $lab_filter_status = 'All';
 $lab_filter_nid = '';
 $valid_lab_statuses = ['All', 'Pending', 'Approved', 'Collected', 'Sample Collected', 'Completed'];
@@ -147,10 +144,25 @@ include '../includes/doctor_header.php';
                                 <textarea name="problem_note" class="form-control" rows="3" placeholder="Enter patient complaints... (Optional)"></textarea>
                             </div>
 
+                            <div class="mb-3">
+                                <label class="form-label fw-bold text-primary"><i class="fa-solid fa-list-check me-1"></i> Select Laboratory Test from List</label>
+                                <select id="testDropdown" class="form-select border-primary" onchange="addTestFromDropdown()">
+                                    <option value="" selected disabled>--- Choose a Test to Add ---</option>
+                                    <?php while($test = mysqli_fetch_assoc($lab_tests_query)): ?>
+                                        <option value="<?php echo htmlspecialchars($test['test_name']); ?>">
+                                            <?php echo htmlspecialchars($test['test_name']); ?>
+                                        </option>
+                                    <?php endwhile; ?>
+                                </select>
+                            </div>
+
                             <div class="mb-4">
                                 <label class="form-label fw-bold text-secondary"><i class="fa-solid fa-flask text-danger me-1"></i> Step 2: Recommended Laboratory Tests (Line-by-Line)</label>
-                                <textarea id="testArea" name="test_recommendations" class="form-control" rows="4" placeholder="1. "></textarea>
-                                <div class="form-text text-muted">Press <strong>Enter</strong> to go to the next line. Each line represents a test.</div>
+                                <textarea id="testArea" name="test_recommendations" class="form-control bg-light fw-bold" rows="5" readonly placeholder="Selected tests will appear here automatically..."></textarea>
+                                <div class="d-flex justify-content-between mt-1">
+                                    <div class="form-text text-muted">Tests are added automatically with line numbers.</div>
+                                    <button type="button" class="btn btn-sm btn-link text-danger p-0 text-decoration-none" onclick="clearTestArea()"><i class="fa-solid fa-trash-can me-1"></i>Clear List</button>
+                                </div>
                             </div>
 
                             <hr>
@@ -229,12 +241,8 @@ include '../includes/doctor_header.php';
                         <input id="patientNidFilter" type="text" name="patient_nid" value="<?php echo htmlspecialchars($lab_filter_nid); ?>" class="form-control form-control-sm" placeholder="Enter NID">
                     </div>
                     <div class="col-auto">
-                        <label for="ticketIdFilter" class="form-label fw-semibold mb-0">Ticket ID</label>
-                        <input id="ticketIdFilter" type="text" name="ticket_id" value="<?php echo isset($_GET['ticket_id'])?htmlspecialchars($_GET['ticket_id']):''; ?>" class="form-control form-control-sm" placeholder="Enter Ticket ID">
-                    </div>
-                    <div class="col-auto">
                         <button type="submit" class="btn btn-sm btn-primary">Apply Filter</button>
-                        <?php $__ticket_val = isset($_GET['ticket_id'])?trim($_GET['ticket_id']):''; if ($lab_filter_status !== 'All' || $lab_filter_nid !== '' || $__ticket_val !== ''): ?>
+                        <?php if ($lab_filter_status !== 'All' || $lab_filter_nid !== ''): ?>
                             <a href="check_patient.php" class="btn btn-sm btn-secondary">Reset</a>
                         <?php endif; ?>
                     </div>
@@ -252,7 +260,7 @@ include '../includes/doctor_header.php';
                     </thead>
                     <tbody>
                         <?php if(mysqli_num_rows($pending_report_list) == 0): ?>
-                            <tr><td colspan="7" class='text-center text-muted py-3'>No patients have pending laboratory reports.</td></tr>
+                            <tr><td colspan="6" class='text-center text-muted py-3'>No patients have pending laboratory reports.</td></tr>
                         <?php else: ?>
                             <?php while($pr_row = mysqli_fetch_assoc($pending_report_list)) { 
                                 $ticket_status = $pr_row['Ticket_Status'];
@@ -274,13 +282,10 @@ include '../includes/doctor_header.php';
                                 <td><span class="badge bg-secondary fs-6"><?php echo $pr_row['Serial_No']; ?></span></td>
                                 <td><span class="badge bg-light text-dark border">#<?php echo htmlspecialchars($pr_row['Appointment_ID']); ?></span></td>
                                 <td>
-                                    <small>Patient NID: <?php echo htmlspecialchars($pr_row['Patient_NID'] ?? 'N/A'); ?></small> <br>
                                     <strong>Patient Name: <?php echo htmlspecialchars($pr_row['Full_Name'] ?? 'N/A'); ?></strong> <br>
-                                    <small>Contact: <?php echo htmlspecialchars($pr_row['address'] ?? 'N/A'); ?></small> <br>
-                                    <small>Address: <?php echo htmlspecialchars($pr_row['Patient_Address'] ?? 'N/A'); ?></small>
+                                    <small>Patient NID: <?php echo htmlspecialchars($pr_row['Patient_NID'] ?? 'N/A'); ?></small> <br>
+                                    <small>Contact: <?php echo htmlspecialchars($pr_row['Phone'] ?? 'N/A'); ?></small>
                                 </td>
-                                 
-                                <td></td>
                                 <td><?php echo htmlspecialchars($pr_row['Reason']); ?></td>
                                 <td><span class="badge bg-dark"><?php echo htmlspecialchars($pr_row['Ticket_No']); ?></span></td>
                                 <td><?php echo $badge_html; ?></td>
@@ -291,12 +296,13 @@ include '../includes/doctor_header.php';
                 </table>
             </div>
         </div>
-
     <?php endif; ?>
 
 </div>
 
 <script type="text/javascript">
+let testCounter = 0; // কততম টেস্ট সিলেক্ট করা হচ্ছে তা ট্র্যাক করার জন্য
+
 function showTreatmentForm() {
     document.getElementById('treatmentForm').classList.remove('d-none');
     document.getElementById('initialActions').classList.add('d-none');
@@ -307,21 +313,35 @@ function hideTreatmentForm() {
     document.getElementById('initialActions').classList.remove('d-none');
 }
 
-document.getElementById('testArea')?.addEventListener('keydown', function(e) {
-    if (e.key === 'Enter') {
-        e.preventDefault(); 
+// ড্রপডাউন থেকে সিলেক্ট করলে এই ফাংশন রান হবে
+function addTestFromDropdown() {
+    let dropdown = document.getElementById('testDropdown');
+    let testArea = document.getElementById('testArea');
+    
+    // সিলেক্টেড টেস্টের নাম নেওয়া
+    let selectedTest = dropdown.value;
+    
+    if(selectedTest) {
+        testCounter++; // সিরিয়াল ১ বাড়লো
         
-        let cursorPos = this.selectionStart;
-        let textBefore = this.value.substring(0, cursorPos);
-        let textAfter  = this.value.substring(cursorPos);
+        // প্রথম টেস্ট হলে সরাসরি বসবে, নাহলে নতুন লাইনে বসবে
+        if (testArea.value === "") {
+            testArea.value = testCounter + ". " + selectedTest;
+        } else {
+            testArea.value += "\n" + testCounter + ". " + selectedTest;
+        }
         
-        let lines = textBefore.split('\n');
-        let nextLineNumber = lines.length + 1;
-        
-        this.value = textBefore + '\n' + nextLineNumber + '. ' + textAfter;
-        this.selectionStart = this.selectionEnd = cursorPos + 1 + (nextLineNumber + '. ').length;
+        // ড্রপডাউনটি আবার রিসেট করে ডিফল্ট অপশনে নিয়ে যাওয়া
+        dropdown.selectedIndex = 0;
     }
-});
+}
+
+// ভুল টেস্ট সিলেক্ট করলে যেন এক ক্লিকে লিস্ট ক্লিয়ার করা যায়
+function clearTestArea() {
+    document.getElementById('testArea').value = "";
+    document.getElementById('testDropdown').selectedIndex = 0;
+    testCounter = 0; // কাউন্টার রিসেট
+}
 </script>
 
 <?php include '../includes/footer.php'; ?>

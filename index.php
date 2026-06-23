@@ -66,23 +66,12 @@ $hmos = ["MAXICARE", "INTELLICARE", "MEDICARD", "AVEGA", "PHILCARE"];
 
     <main class="max-w-6xl mx-auto px-4 py-12 space-y-16">
 
-        <section class="text-center space-y-6">
-            <div class="space-y-2">
-                <p class="text-xs font-bold tracking-wider text-indigo-600 uppercase">FIND A DOCTOR</p>
-                <h1 class="text-2xl md:text-4xl font-extrabold text-gray-900 tracking-tight">
-                    Book your appointment, in-person or <span class="text-indigo-600">online</span>
-                </h1>
-            </div>
-
-            <div class="max-w-3xl mx-auto relative">
-                <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                    <i class="fa-solid fa-magnifying-glass text-indigo-500 text-lg"></i>
-                </div>
-                <input type="text" 
-                       placeholder="Search by specialty, hospital, or doctor name..." 
-                       class="w-full pl-12 pr-4 py-4 bg-white border border-gray-200 rounded-2xl shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm md:text-base placeholder-gray-400 transition-all">
-            </div>
-        </section>
+        <!-- #Find Doctor Section====================================> -->
+        <?php 
+             // কম্পোনেন্টটি ইনক্লুড করা হলো
+            include 'components/HomePage/searchDoctor.php'; 
+        ?>
+        <!-- #Find Doctor Section====================================> -->
 
         <section class="max-w-3xl mx-auto bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-100 rounded-2xl p-6 md:p-8 flex flex-col md:flex-row items-center justify-between gap-6 shadow-sm">
             <div class="space-y-4 text-center md:text-left">
@@ -202,6 +191,105 @@ $hmos = ["MAXICARE", "INTELLICARE", "MEDICARD", "AVEGA", "PHILCARE"];
         </section>
 
     </main>
+
+
+
+
+
+
+<script src="https://code.jquery.com/jquery-3.7.0.js"></script>
+<script>
+$(document).ready(function() {
+    // প্রথমবার পেজ লোড হলে fetchDoctors() অটোমেটিক কল হবে না, লিস্ট হাইড থাকবে।
+
+    // ডানপাশের "Find Doctor" বাটনে ক্লিক করলে সার্চ হবে এবং লিস্ট শো করবে
+    $('#find_doctor_btn').on('click', function() {
+        var query = $('#search_doctor').val();
+        var category = $('#doctor_dept').val();
+        
+        // রেজাল্ট কন্টেইনার আনহাইড (Show) করা
+        $('#doctor_results_container').removeClass('d-none');
+        
+        fetchDoctors(query, category);
+    });
+
+    // তুমি চাইলে ইউজার এন্টার (Enter) চাপলেও যেন সার্চ বাটন ট্রিগার হয় তার ব্যবস্থা:
+    $('#search_doctor').on('keypress', function(e) {
+        if(e.which == 13) { // 13 হলো Enter কী
+            $('#find_doctor_btn').click();
+        }
+    });
+
+    // ডাটাবেজ থেকে ডাটা আনার AJAX ফাংশন
+    function fetchDoctors(query, category) {
+        // লোডিং ইফেক্ট দেখানোর জন্য
+        $('#doctor_list').html('<div class="col-12 text-center py-4"><div class="spinner-border text-primary" role="status"></div><p class="mt-2 text-muted">Searching doctors...</p></div>');
+        
+        $.ajax({
+            url: 'fetch_doctors.php',
+            type: 'POST',
+            data: { action: 'filter_doctors', query: query, category: category },
+            success: function(response) {
+                $('#doctor_list').html(response);
+            }
+        });
+    }
+
+    // লিস্টের কার্ডে ক্লিক করলে মডাল ওপেন হবে
+    $(document).on('click', '.view-doctor-details', function() {
+        var doctorData = $(this).data('info');
+        var profilePic = doctorData.Profile_Pic ? '../uploads/' + doctorData.Profile_Pic : 'https://via.placeholder.com/150';
+        
+        var detailsHtml = `
+            <div class="row g-4">
+                <div class="col-md-4 text-center border-end">
+                    <img src="${profilePic}" class="img-fluid rounded-circle img-thumbnail mb-3 shadow-sm" style="width: 140px; height: 140px; object-fit: cover;">
+                    <h4 class="fw-bold text-dark mb-1">${doctorData.Full_Name}</h4>
+                    <p class="text-primary font-semibold small mb-2">${doctorData.Title || ''}</p>
+                    <span class="badge bg-primary-subtle text-primary rounded-pill px-3 py-2 small fw-bold">${doctorData.Specialization}</span>
+                </div>
+                <div class="col-md-8">
+                    <div class="table-responsive">
+                        <table class="table table-sm table-borderless align-middle">
+                            <tr class="border-bottom">
+                                <th class="py-2 text-muted" style="width: 35%;">Education</th>
+                                <td class="py-2 text-dark fw-medium">${doctorData.Education || 'N/A'}</td>
+                            </tr>
+                            <tr class="border-bottom">
+                                <th class="py-2 text-muted">Experience</th>
+                                <td class="py-2 text-dark fw-medium">${doctorData.Experience || '0'} Years</td>
+                            </tr>
+                            <tr class="border-bottom">
+                                <th class="py-2 text-muted">Chamber</th>
+                                <td class="py-2 text-dark fw-medium">${doctorData.Chamber || 'N/A'}</td>
+                            </tr>
+                            <tr class="border-bottom">
+                                <th class="py-2 text-muted">Available Time</th>
+                                <td class="py-2 text-primary fw-bold">${doctorData.Available_Time || 'N/A'}</td>
+                            </tr>
+                            <tr class="border-bottom">
+                                <th class="py-2 text-muted">Contact Info</th>
+                                <td class="py-2 text-dark small">${doctorData.Email}<br>${doctorData.Phone || ''}</td>
+                            </tr>
+                            <tr>
+                                <th class="py-2 text-muted">Bio / Statement</th>
+                                <td class="py-2 text-secondary small">${doctorData.Bio || 'No biography available.'}</td>
+                            </tr>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        $('#modal_doctor_body').html(detailsHtml);
+        $('#doctorDetailsModal').modal('show');
+    });
+});
+</script>
+
+
+
+
 <?php include 'includes/footer.php'; ?>
 </body>
 </html>

@@ -3,6 +3,12 @@ session_start();
 include '../config/dbconnect.php';
 if (!isset($_SESSION['doctor'])) { header("Location: login.php"); exit(); }
 
+// ১. ডক্টর সেশন থেকে ডাটাবেজ কুয়েরি করে ডাক্তারের নাম তুলে আনা হচ্ছে
+$doctor_nid = $_SESSION['doctor'];
+$doc_query = mysqli_query($conn, "SELECT Full_Name FROM doctor WHERE NID = '$doctor_nid'");
+$doc_data = mysqli_fetch_assoc($doc_query);
+$doctor_name = $doc_data['Full_Name'] ?? 'Unknown Doctor';
+
 $p = null;
 if (isset($_GET['id'])) {
     $id = (int)$_GET['id'];
@@ -33,13 +39,18 @@ if(isset($_POST['save_prescription'])) {
     $medicines = mysqli_real_escape_string($conn, $_POST['medicines']);
     $advice = mysqli_real_escape_string($conn, $_POST['advice']);
     
+    // ডাক্তারের নামটিকে কুয়েরির জন্য নিরাপদ করা হলো
+    $doc_name_db = mysqli_real_escape_string($conn, $doctor_name);
+    
     $appointment_id_sql = $appointment_id !== null ? "'$appointment_id'" : 'NULL';
-    $sql = "INSERT INTO prescriptions (ticket_no, patient_nid, doctor_nid, appointment_id, symptoms, diagnosis, medicines, advice) 
-            VALUES ('$ticket_no', '$nid', '{$_SESSION['doctor']}', $appointment_id_sql, '$symptoms', '$diagnosis', '$medicines', '$advice')";
+    
+    // ২. FIXED: INSERT কুয়েরিতে doctor_name কলাম এবং ভ্যালু ($doc_name_db) যুক্ত করা হয়েছে
+    $sql = "INSERT INTO prescriptions (ticket_no, patient_nid, doctor_nid, doctor_name, appointment_id, symptoms, diagnosis, medicines, advice) 
+            VALUES ('$ticket_no', '$nid', '$doctor_nid', '$doc_name_db', $appointment_id_sql, '$symptoms', '$diagnosis', '$medicines', '$advice')";
     
     if(mysqli_query($conn, $sql)) {
         if ($appointment_id !== null) {
-            mysqli_query($conn, "UPDATE appointments SET Status='Finished' WHERE id='$appointment_id'");
+            mysqli_query($conn, "UPDATE appointments SET Status='completed' WHERE id='$appointment_id'");
         }
         echo "<script>alert('Prescription Saved!'); window.location='done_patient_list.php';</script>";
         exit();
@@ -52,25 +63,26 @@ include '../includes/header_link.php';
 <div class="container mt-5">
     <div class="card shadow p-4">
         <h3 class="text-center mb-4">Patient Prescription & Records</h3>
+        
+        <p class="text-end text-muted"><strong>Doctor:</strong> Dr. <?php echo htmlspecialchars($doctor_name); ?></p>
+        <hr>
+
         <div class="row">
             <div class="col-md-6">
-                <p><strong>Patient Name:</strong> <?php echo $p['Full_Name'] ?? 'N/A'; ?></p>
-                <p><strong>Patient ID (NID):</strong> <?php echo $p['NID'] ?? 'N/A'; ?></p>
-                <p><strong>Contact:</strong> <?php echo $p['Phone'] ?? 'N/A'; ?></p>
+                <p><strong>Patient Name:</strong> <?php echo htmlspecialchars($p['Full_Name'] ?? 'N/A'); ?></p>
+                <p><strong>Patient ID (NID):</strong> <?php echo htmlspecialchars($p['NID'] ?? 'N/A'); ?></p>
+                <p><strong>Contact:</strong> <?php echo htmlspecialchars($p['Phone'] ?? 'N/A'); ?></p>
             </div>
             <div class="col-md-6">
-                <p><strong>Address:</strong> <?php echo $p['Address'] ?? 'N/A'; ?></p>
-                <p><strong>Appointment ID:</strong> <?php echo $_GET['id'] ?? 'N/A'; ?></p>
-                <p><strong>Ticket ID:</strong> <?php echo $p['ticket_no'] ?? 'N/A'; ?></p>
-                <p><strong>Problem/Reason:</strong> <?php echo $p['Reason'] ?? 'N/A'; ?></p>
-            </div>
-            <div class="col-md-12">
-               
+                <p><strong>Address:</strong> <?php echo htmlspecialchars($p['Address'] ?? 'N/A'); ?></p>
+                <p><strong>Appointment ID:</strong> <?php echo isset($_GET['id']) ? (int)$_GET['id'] : 'N/A'; ?></p>
+                <p><strong>Ticket ID:</strong> <?php echo htmlspecialchars($p['ticket_no'] ?? 'N/A'); ?></p>
+                <p><strong>Problem/Reason:</strong> <?php echo htmlspecialchars($p['Reason'] ?? 'N/A'); ?></p>
             </div>
         </div>
         <hr>
         <?php if (isset($p['ticket_no'])): ?>
-            <a href="../mt/view_report.php?ticket=<?php echo $p['ticket_no']; ?>" class="btn btn-success mb-3"><i class="fa-solid fa-eye"></i> View Lab Report</a>
+            <a href="../mt/view_report.php?ticket=<?php echo urlencode($p['ticket_no']); ?>" class="btn btn-success mb-3"><i class="fa-solid fa-eye"></i> View Lab Report</a>
         <?php endif; ?>
 
         <form method="POST">

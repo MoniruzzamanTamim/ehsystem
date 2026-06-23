@@ -1,5 +1,6 @@
 <?php
 include '../config/dbconnect.php';
+ob_start();
 include '../includes/header_link.php';
 
 // ১. ডিলিট লজিক (সবার আগে থাকতে হবে)

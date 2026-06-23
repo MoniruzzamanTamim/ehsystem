@@ -67,7 +67,7 @@
             </ul>
             <div class="d-flex align-items-center gap-3">
                 <span class="text-white-50 small d-none d-md-inline">
-                    <i class="fa-solid fa-user-circle me-1"></i> Active MT: <strong><?php echo htmlspecialchars($_SESSION['mt']); ?></strong>
+                    <i class="fa-solid fa-user-circle me-1"></i> Active MT: <strong><?php echo htmlspecialchars($_SESSION['mt'] ?? ''); ?></strong>
                 </span>
                 <a href="logout.php" class="btn btn-outline-danger btn-sm rounded-pill px-3 text-white border-white">
                     <i class="fa-solid fa-power-off me-1"></i> Logout

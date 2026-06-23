@@ -4,7 +4,7 @@ include '../config/dbconnect.php';
 
 include 'admin_session_fix.php';
 
-$mt_id = $_SESSION['mt'];
+$mt_id = isset($_SESSION['mt']) ? $_SESSION['mt'] : '';
 
 if (isset($_POST['update_status'])) {
     // ticket_no সিকিউর করা
